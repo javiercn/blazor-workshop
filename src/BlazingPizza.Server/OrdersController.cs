@@ -15,9 +15,9 @@ namespace BlazingPizza.Server
     [Authorize]
     public class OrdersController : Controller
     {
-        private readonly PizzaStoreContext _db;
+        private readonly ApplicationDbContext _db;
 
-        public OrdersController(PizzaStoreContext db)
+        public OrdersController(ApplicationDbContext db)
         {
             _db = db;
         }

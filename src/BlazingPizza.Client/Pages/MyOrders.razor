@@ -1,6 +1,9 @@
 ﻿@page "/myorders"
-@inject HttpClient HttpClient
 @attribute [Authorize]
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@using System.Net.Http.Headers
+@inject NavigationManager NavigationManager
+@inject IAccessTokenProvider TokenProvider
 
 <div class="main">
     <TemplatedList Loader="LoadOrders" ListGroupClass="orders-list">
@@ -32,6 +35,24 @@
 @code {
     async Task<List<OrderWithStatus>> LoadOrders()
     {
-        return await HttpClient.GetJsonAsync<List<OrderWithStatus>>("orders");
+        var tokenResponse = await TokenProvider.RequestAccessToken();
+        if (tokenResponse.TryGetToken(out var token))
+        {
+            var client = CreateAuthenticatedClient(token);
+            return await client.GetJsonAsync<List<OrderWithStatus>>("orders");
+        }
+        else
+        {
+            NavigationManager.NavigateTo(tokenResponse.RedirectUrl);
+            return new List<OrderWithStatus>();
+        }
+    }
+
+    private HttpClient CreateAuthenticatedClient(AccessToken token)
+    {
+        var client = new HttpClient();
+        client.BaseAddress = new Uri(NavigationManager.BaseUri);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.Value);
+        return client;
     }
 }

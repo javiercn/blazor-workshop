@@ -2,7 +2,7 @@
 {
     public static class SeedData
     {
-        public static void Initialize(PizzaStoreContext db)
+        public static void Initialize(ApplicationDbContext db)
         {
             var toppings = new Topping[]
             {

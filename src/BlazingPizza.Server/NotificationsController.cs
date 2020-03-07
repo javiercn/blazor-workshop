@@ -10,9 +10,9 @@ namespace BlazingPizza.Server
     [Authorize]
     public class NotificationsController : Controller
     {
-        private readonly PizzaStoreContext _db;
+        private readonly ApplicationDbContext _db;
 
-        public NotificationsController(PizzaStoreContext db)
+        public NotificationsController(ApplicationDbContext db)
         {
             _db = db;
         }

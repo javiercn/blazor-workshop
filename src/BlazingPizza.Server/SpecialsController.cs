@@ -10,9 +10,9 @@ namespace BlazingPizza.Server
     [ApiController]
     public class SpecialsController : Controller
     {
-        private readonly PizzaStoreContext _db;
+        private readonly ApplicationDbContext _db;
 
-        public SpecialsController(PizzaStoreContext db)
+        public SpecialsController(ApplicationDbContext db)
         {
             _db = db;
         }

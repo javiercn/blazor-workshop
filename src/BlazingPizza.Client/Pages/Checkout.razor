@@ -1,6 +1,9 @@
 @page "/checkout"
+@attribute [Authorize]
+@using System.Net.Http.Headers
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
 @inject OrderState OrderState
-@inject HttpClient HttpClient
+@inject IAccessTokenProvider TokenProvider
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 
@@ -35,35 +38,9 @@
 
 @code {
     bool isSubmitting;
-    [CascadingParameter] Task<AuthenticationState> AuthenticationStateTask { get; set; }
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        var authState = await AuthenticationStateTask;
-        if (!authState.User.Identity.IsAuthenticated)
-        {
-            // The server won't accept orders from unauthenticated users, so avoid
-            // an error by making them log in at this point
-            await LocalStorage.SetAsync(JSRuntime, "currentorder", OrderState.Order);
-            NavigationManager.NavigateTo("user/signin?redirectUri=/checkout", true);
-        }
-
-        // Try to recover any temporary saved order
-        if (!OrderState.Order.Pizzas.Any())
-        {
-            var savedOrder = await LocalStorage.GetAsync<Order>(JSRuntime, "currentorder");
-            if (savedOrder != null)
-            {
-                OrderState.ReplaceOrder(savedOrder);
-                await LocalStorage.DeleteAsync(JSRuntime, "currentorder");
-            }
-            else
-            {
-                // There's nothing check out - go to home
-                NavigationManager.NavigateTo("");
-            }
-        }
-
         // In the background, ask if they want to be notified about order updates
         _ = RequestNotificationSubscriptionAsync();
     }
@@ -72,24 +49,50 @@
     {
         isSubmitting = true;
 
-        try
+        var tokenResponse = await TokenProvider.RequestAccessToken();
+        if (tokenResponse.TryGetToken(out var token))
         {
-            var newOrderId = await HttpClient.PostJsonAsync<int>("orders", OrderState.Order);
-            OrderState.ResetOrder();
-            NavigationManager.NavigateTo($"myorders/{newOrderId}");
+            try
+            {
+                var client = CreateAuthenticatedClient(token);
+                var newOrderId = await client.PostJsonAsync<int>("orders", OrderState.Order);
+                OrderState.ResetOrder();
+                NavigationManager.NavigateTo($"myorders/{newOrderId}");
+            }
+            finally
+            {
+                isSubmitting = false;
+            }
         }
-        finally
+        else
         {
-            isSubmitting = false;
+            NavigationManager.NavigateTo(tokenResponse.RedirectUrl);
         }
     }
 
     async Task RequestNotificationSubscriptionAsync()
     {
-        var subscription = await JSRuntime.InvokeAsync<NotificationSubscription>("blazorPushNotifications.requestSubscription");
-        if (subscription != null)
+        var tokenResponse = await TokenProvider.RequestAccessToken();
+        if (tokenResponse.TryGetToken(out var token))
         {
-            await HttpClient.PutJsonAsync<object>("notifications/subscribe", subscription);
+            var subscription = await JSRuntime.InvokeAsync<NotificationSubscription>("blazorPushNotifications.requestSubscription");
+            if (subscription != null)
+            {
+                var client = CreateAuthenticatedClient(token);
+                await client.PutJsonAsync<object>("notifications/subscribe", subscription);
+            }
         }
+        else
+        {
+            NavigationManager.NavigateTo(tokenResponse.RedirectUrl);
+        }
+    }
+
+    private HttpClient CreateAuthenticatedClient(AccessToken token)
+    {
+        var client = new HttpClient();
+        client.BaseAddress = new Uri(NavigationManager.BaseUri);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.Value);
+        return client;
     }
 }

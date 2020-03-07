@@ -1,8 +1,11 @@
 ﻿@page "/myorders/{orderId:int}"
-@using System.Threading
-@inject HttpClient HttpClient
 @implements IDisposable
 @attribute [Authorize]
+@using System.Threading
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@using System.Net.Http.Headers
+@inject NavigationManager NavigationManager
+@inject IAccessTokenProvider TokenProvider
 
 <div class="main">
     @if (invalidOrder)
@@ -66,7 +69,12 @@
             try
             {
                 invalidOrder = false;
-                orderWithStatus = await HttpClient.GetJsonAsync<OrderWithStatus>($"orders/{OrderId}");
+                var tokenResponse = await TokenProvider.RequestAccessToken();
+                if (tokenResponse.TryGetToken(out var token))
+                {
+                    var client = CreateAuthenticatedClient(token);
+                    orderWithStatus = await client.GetJsonAsync<OrderWithStatus>($"orders/{OrderId}");
+                }
             }
             catch (Exception ex)
             {
@@ -79,5 +87,13 @@
 
             await Task.Delay(4000);
         }
+    }
+
+    private HttpClient CreateAuthenticatedClient(AccessToken token)
+    {
+        var client = new HttpClient();
+        client.BaseAddress = new Uri(NavigationManager.BaseUri);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.Value);
+        return client;
     }
 }

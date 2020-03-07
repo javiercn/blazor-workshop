@@ -1,17 +1,27 @@
-<div class="user-info">
-    <AuthorizeView>
-        <Authorizing>
-            <text>...</text>
-        </Authorizing>
-        <Authorized>
-            <img src="img/user.svg" />
-            <div>
-                <span class="username">@context.User.Identity.Name</span>
-                <a class="sign-out" href="user/signout">Sign out</a>
-            </div>
-        </Authorized>
-        <NotAuthorized>
-            <a class="sign-in" href="user/signin">Sign in</a>
-        </NotAuthorized>
-    </AuthorizeView>
-</div>
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+
+@inject NavigationManager Navigation
+@inject SignOutSessionStateManager SignOutManager
+
+<AuthorizeView>
+    <Authorized>
+        <img src="img/user.svg" />
+        <div>
+            <a href="authentication/profile" class="username">@context.User.Identity.Name!</a>
+            <button class="sign-out" @onclick="BeginSignOut">Log out</button>
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <a class="sign-in" href="authentication/register">Register</a>
+        <a class="sign-in" href="authentication/login">Log in</a>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code{
+    private async Task BeginSignOut(MouseEventArgs args)
+    {
+        await SignOutManager.SetSignOutState();
+        Navigation.NavigateTo("authentication/logout");
+    }
+}
