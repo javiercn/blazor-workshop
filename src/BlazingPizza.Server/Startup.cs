@@ -28,12 +28,6 @@ namespace BlazingPizza.Server
 
             services.AddDbContext<PizzaStoreContext>(options => options.UseSqlite("Data Source=pizza.db"));
 
-            services.AddResponseCompression(options =>
-            {
-                options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
-                    new[] { MediaTypeNames.Application.Octet });
-            });
-
             services
                 .AddAuthentication(options =>
                 {
@@ -54,26 +48,24 @@ namespace BlazingPizza.Server
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
-            app.UseResponseCompression();
-
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
-                app.UseBlazorDebugging();
+                app.UseWebAssemblyDebugging();
             }
 
+            app.UseBlazorFrameworkFiles();
             app.UseStaticFiles();
 
             app.UseRouting();
 
             app.UseAuthentication();
             app.UseAuthorization();
-            app.UseClientSideBlazorFiles<Client.Startup>();
 
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
-                endpoints.MapFallbackToClientSideBlazor<Client.Startup>("index.html");
+                endpoints.MapFallbackToFile("index.html");
             });
         }
     }
